@@ -41,6 +41,7 @@ In a xib, set the collection view's *Custom Class* to `FlatList` and *Module* to
 | `keyExtractor` | `setData(_:keyExtractor:)` (a duplicate key keeps the first item) |
 | `horizontal` | `horizontal` |
 | `numColumns` | `numColumns` (vertical only) |
+| - | `itemWidthFraction` (horizontal item width), `maxHeight` (self sizing) |
 | `ItemSeparatorComponent` | `itemSpacing` / `columnSpacing` (space), `separatorColor` / `separatorView` (line) |
 | `ListHeader/Footer/EmptyComponent` | `listHeader` / `listFooter` / `listEmpty` |
 | `onEndReached(+Threshold)` | `onEndReached` / `onEndReachedThreshold` |
@@ -57,15 +58,43 @@ list.maxHeight = 360                        // as tall as its content, scrolls o
 
 Do not pin a height to the list while `maxHeight` is set.
 
-### Horizontal self sizing
+### Vertical list
 
 ```swift
-list.horizontal = true
-list.itemWidthFraction = 0.5   // each item is half the list width (nil: width from the cell's Auto Layout)
-list.maxHeight = .greatestFiniteMagnitude   // height = tallest item, still scrolls sideways
+let list = FlatList()
+list.numColumns = 2                 // grid; 1 = plain list
+list.itemSpacing = 16               // between rows
+list.columnSpacing = 16             // between columns
+list.onRefresh = { reload() }       // pull to refresh (vertical only)
+list.onEndReached = { loadNextPage() }
+list.setData(items, keyExtractor: { $0.id })
 ```
 
-Without `maxHeight` a horizontal list fills the height its parent gives it.
+Give the list a height from its parent (constraints), or let it be as tall as its content with `maxHeight` (see Self sizing above).
+
+### Horizontal list
+
+```swift
+let list = FlatList()
+list.horizontal = true
+list.itemSpacing = 12               // between items
+list.itemWidthFraction = 0.5        // each item is half the list width; nil = width from the cell's Auto Layout
+list.contentInsets = .init(top: 0, leading: 16, bottom: 0, trailing: 16)
+list.register(cell: ProductCell.self) { (cell, product: Product, _) in cell.setup(product) }
+list.setData(products, keyExtractor: { $0.id })
+```
+
+Two ways to size the height:
+
+```swift
+// 1. Fill the height the parent gives (constraints): the default
+list.heightAnchor.constraint(equalToConstant: 200).isActive = true
+
+// 2. Fit the content: height = tallest item, scrolls sideways only. Do not pin a height.
+list.maxHeight = .greatestFiniteMagnitude   // or a number to cap the height
+```
+
+Header, footer, pagination loader and `listEmpty` work in both directions. `numColumns`, `onRefresh` and separators are for vertical lists only. `itemWidthFraction` is measured against the list width without subtracting `itemSpacing`; use `contentInsets` to fine tune.
 
 ### Separators
 
