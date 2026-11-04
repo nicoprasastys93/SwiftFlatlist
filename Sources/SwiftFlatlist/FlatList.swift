@@ -28,6 +28,7 @@
 //  keyExtractor   -> setData(_:keyExtractor:)
 //  horizontal     -> horizontal
 //  numColumns     -> numColumns (vertical only)
+//  (no RN equivalent) -> itemWidthFraction: horizontal item width, 0.5 = half the list
 //  ItemSeparator  -> itemSpacing / columnSpacing (space), separatorColor (line)
 //  ListHeader/ListFooter/ListEmpty -> listHeader / listFooter / listEmpty
 //  onEndReached(+Threshold) -> onEndReached / onEndReachedThreshold
@@ -49,7 +50,10 @@ public final class FlatList: UICollectionView {
 
     // MARK: - Props
     /// Scroll direction. A horizontal list needs a height from its parent (like RN).
-    public var horizontal: Bool = false { didSet { updateLayout() } }
+    public var horizontal: Bool = false { didSet { updateLayout(); updateSelfSizing() } }
+    /// Item width as a fraction of the list width (0...1], horizontal lists only. 0.5 = two items per screen.
+    /// `nil` (default): the width comes from the cell's Auto Layout (`estimatedItemSize` is the first guess).
+    public var itemWidthFraction: CGFloat? { didSet { updateLayout() } }
     /// Number of columns (vertical lists only).
     public var numColumns: Int = 1 { didSet { numColumns = max(1, numColumns); updateLayout() } }
     /// Space between rows (vertical) or between items (horizontal). RN: ItemSeparatorComponent.
@@ -78,8 +82,11 @@ public final class FlatList: UICollectionView {
     /// scrolls once the content is taller than this value. `nil` (default) keeps the normal behaviour:
     /// the list fills the height its parent gives it and always scrolls.
     /// Do not pin a height to the list while this is set, its intrinsic height is the size.
+    /// Horizontal lists: the height is the tallest item (items size their own height), capped at this value;
+    /// the list keeps scrolling sideways.
     public var maxHeight: CGFloat? {
         didSet {
+            if horizontal { updateLayout() }  // item height switches between "fill the list" and "fit the cell"
             if maxHeight != nil {
                 // inside a stack view spare height goes to the lowest hugging priority: stay at the content height
                 setContentHuggingPriority(.required, for: .vertical)
@@ -381,8 +388,8 @@ public final class FlatList: UICollectionView {
             invalidateIntrinsicContentSize()
             return
         }
-        // scroll only turns on at the highest point
-        let shouldScroll = collectionViewLayout.collectionViewContentSize.height > maxHeight + 0.5
+        // vertical: scroll only turns on at the highest point. Horizontal always scrolls sideways.
+        let shouldScroll = horizontal || collectionViewLayout.collectionViewContentSize.height > maxHeight + 0.5
         if isScrollEnabled != shouldScroll { isScrollEnabled = shouldScroll }
         invalidateIntrinsicContentSize()
         // a list that is not scrolling (yet) still has to be able to ask for the next page
@@ -403,17 +410,25 @@ public final class FlatList: UICollectionView {
         alwaysBounceHorizontal = horizontal
     }
 
+    /// First guess for the cross axis length (height of a horizontal item) before the cell measured itself.
+    private static let estimatedCrossSize: CGFloat = 100
+
     private func makeLayout() -> UICollectionViewLayout {
         let estimate = estimatedItemSize
         let item: NSCollectionLayoutItem
         let group: NSCollectionLayoutGroup
 
         if horizontal {
-            item = NSCollectionLayoutItem(layoutSize: .init(widthDimension: .estimated(estimate), heightDimension: .fractionalHeight(1)))
-            group = NSCollectionLayoutGroup.horizontal(
-                layoutSize: .init(widthDimension: .estimated(estimate), heightDimension: .fractionalHeight(1)),
-                subitems: [item]
-            )
+            // Self sizing: the height follows the tallest cell. Otherwise it fills the height the parent gives.
+            let height: NSCollectionLayoutDimension = maxHeight != nil ? .estimated(Self.estimatedCrossSize) : .fractionalHeight(1)
+            if let fraction = itemWidthFraction {
+                let width = NSCollectionLayoutDimension.fractionalWidth(min(max(fraction, 0.01), 1))
+                item = NSCollectionLayoutItem(layoutSize: .init(widthDimension: .fractionalWidth(1), heightDimension: height))
+                group = NSCollectionLayoutGroup.horizontal(layoutSize: .init(widthDimension: width, heightDimension: height), subitems: [item])
+            } else {
+                item = NSCollectionLayoutItem(layoutSize: .init(widthDimension: .estimated(estimate), heightDimension: height))
+                group = NSCollectionLayoutGroup.horizontal(layoutSize: .init(widthDimension: .estimated(estimate), heightDimension: height), subitems: [item])
+            }
         } else {
             item = NSCollectionLayoutItem(layoutSize: .init(widthDimension: .fractionalWidth(1.0 / CGFloat(numColumns)), heightDimension: .estimated(estimate)))
             let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .estimated(estimate))
@@ -437,7 +452,7 @@ public final class FlatList: UICollectionView {
         configuration.scrollDirection = horizontal ? .horizontal : .vertical
 
         let boundarySize = horizontal
-            ? NSCollectionLayoutSize(widthDimension: .estimated(44), heightDimension: .fractionalHeight(1))
+            ? NSCollectionLayoutSize(widthDimension: .estimated(44), heightDimension: maxHeight != nil ? .estimated(44) : .fractionalHeight(1))
             : NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .estimated(44))
         var boundaries: [NSCollectionLayoutBoundarySupplementaryItem] = []
         if listHeader != nil {

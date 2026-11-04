@@ -57,6 +57,16 @@ list.maxHeight = 360                        // as tall as its content, scrolls o
 
 Do not pin a height to the list while `maxHeight` is set.
 
+### Horizontal self sizing
+
+```swift
+list.horizontal = true
+list.itemWidthFraction = 0.5   // each item is half the list width (nil: width from the cell's Auto Layout)
+list.maxHeight = .greatestFiniteMagnitude   // height = tallest item, still scrolls sideways
+```
+
+Without `maxHeight` a horizontal list fills the height its parent gives it.
+
 ### Separators
 
 ```swift

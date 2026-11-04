@@ -63,4 +63,22 @@ final class FlatListTests: XCTestCase {
         list.onRefresh = nil
         XCTAssertNil(list.refreshControl)
     }
+
+    func testHorizontalSelfSizingUsesTallestItemAndHalfWidth() {
+        let list = makeList()
+        list.horizontal = true
+        list.itemWidthFraction = 0.5
+        list.maxHeight = .greatestFiniteMagnitude
+        list.setData(["a", "b", "c", "d"], animated: false)
+        let host = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 800))
+        host.addSubview(list)
+        list.frame = CGRect(x: 0, y: 0, width: 320, height: 1)
+        list.layoutIfNeeded()
+        list.layoutIfNeeded()
+        let layout = list.collectionViewLayout
+        XCTAssertGreaterThan(layout.collectionViewContentSize.height, 1)
+        XCTAssertEqual(layout.layoutAttributesForItem(at: IndexPath(item: 0, section: 0))?.frame.width ?? 0, 160, accuracy: 0.5)
+        XCTAssertEqual(layout.collectionViewContentSize.width, 640, accuracy: 1)
+        XCTAssertTrue(list.isScrollEnabled)
+    }
 }
