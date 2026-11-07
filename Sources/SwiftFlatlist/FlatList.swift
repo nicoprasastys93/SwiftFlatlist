@@ -75,7 +75,7 @@ public final class FlatList: UICollectionView {
     ///     list.separatorView = { let line = MyDashedLine(); return line }
     public var separatorView: (() -> UIView)? { didSet { separatorChanged() } }
     /// Insets around the separator (`separatorView` or the plain `separatorColor` line).
-    /// Default: `separatorView` gets a top inset of `itemSpacing`; the plain line gets none.
+    /// Default: top inset of `itemSpacing` for both `separatorView` and the plain line.
     public var separatorViewInsets: NSDirectionalEdgeInsets? { didSet { separatorChanged() } }
     /// `false` (default): the last item has no separator. `true`: it gets one too.
     /// Applies to both the plain line and `separatorView`.
@@ -281,7 +281,7 @@ public final class FlatList: UICollectionView {
                 content = UIView()
                 content.tag = Self.separatorLineTag
                 content.heightAnchor.constraint(equalToConstant: separatorHeight).isActive = true
-                insets = separatorViewInsets ?? .zero
+                insets = separatorViewInsets ?? NSDirectionalEdgeInsets(top: itemSpacing, leading: 0, bottom: 0, trailing: 0)
             }
             content.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(content)
