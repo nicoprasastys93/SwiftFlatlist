@@ -57,7 +57,7 @@ public final class FlatList: UICollectionView {
     /// Number of columns (vertical lists only).
     public var numColumns: Int = 1 { didSet { numColumns = max(1, numColumns); updateLayout() } }
     /// Space between rows (vertical) or between items (horizontal). RN: ItemSeparatorComponent.
-    public var itemSpacing: CGFloat = 0 { didSet { updateLayout() } }
+    public var itemSpacing: CGFloat = 0 { didSet { updateLayout(); separatorChanged() } }
     /// Space between columns when `numColumns > 1`.
     public var columnSpacing: CGFloat = 0 { didSet { updateLayout() } }
     /// Estimated item length on the scroll axis. Items always size themselves with Auto Layout.
@@ -74,6 +74,8 @@ public final class FlatList: UICollectionView {
     /// its height comes from its own constraints / intrinsic size (give it one).
     ///     list.separatorView = { let line = MyDashedLine(); return line }
     public var separatorView: (() -> UIView)? { didSet { separatorChanged() } }
+    /// Insets around `separatorView`. By default, the top inset follows `itemSpacing` and other edges are zero.
+    public var separatorViewInsets: NSDirectionalEdgeInsets? { didSet { separatorChanged() } }
     /// `false` (default): the last item has no separator. `true`: it gets one too.
     /// Applies to both the plain line and `separatorView`.
     public var separatorOnLastItem: Bool = false { didSet { reloadItems() } }
@@ -271,10 +273,11 @@ public final class FlatList: UICollectionView {
             if let custom = separatorView?() {
                 custom.translatesAutoresizingMaskIntoConstraints = false
                 view.addSubview(custom)
-                custom.topAnchor.constraint(equalTo: view.topAnchor).isActive = true
-                custom.leadingAnchor.constraint(equalTo: view.leadingAnchor).isActive = true
-                custom.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
-                custom.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
+                let insets = separatorViewInsets ?? NSDirectionalEdgeInsets(top: itemSpacing, leading: 0, bottom: 0, trailing: 0)
+                custom.topAnchor.constraint(equalTo: view.topAnchor, constant: insets.top).isActive = true
+                custom.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: insets.leading).isActive = true
+                custom.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -insets.trailing).isActive = true
+                custom.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -insets.bottom).isActive = true
             } else {
                 view.heightAnchor.constraint(equalToConstant: separatorHeight).isActive = true
             }
