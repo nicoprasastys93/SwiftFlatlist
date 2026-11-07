@@ -74,7 +74,8 @@ public final class FlatList: UICollectionView {
     /// its height comes from its own constraints / intrinsic size (give it one).
     ///     list.separatorView = { let line = MyDashedLine(); return line }
     public var separatorView: (() -> UIView)? { didSet { separatorChanged() } }
-    /// Insets around `separatorView`. By default, the top inset follows `itemSpacing` and other edges are zero.
+    /// Insets around the separator (`separatorView` or the plain `separatorColor` line).
+    /// Default: `separatorView` gets a top inset of `itemSpacing`; the plain line gets none.
     public var separatorViewInsets: NSDirectionalEdgeInsets? { didSet { separatorChanged() } }
     /// `false` (default): the last item has no separator. `true`: it gets one too.
     /// Applies to both the plain line and `separatorView`.
@@ -236,6 +237,7 @@ public final class FlatList: UICollectionView {
 
     // MARK: - Separator
     private static let separatorTag = 0xF1A7
+    private static let separatorLineTag = 0xF1A8
     /// Cells are reused: a separator built for an older configuration is rebuilt when this changed.
     private var separatorGeneration = 0
 
@@ -270,20 +272,26 @@ public final class FlatList: UICollectionView {
             view.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor).isActive = true
             view.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor).isActive = true
             view.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor).isActive = true
+            let content: UIView
+            let insets: NSDirectionalEdgeInsets
             if let custom = separatorView?() {
-                custom.translatesAutoresizingMaskIntoConstraints = false
-                view.addSubview(custom)
-                let insets = separatorViewInsets ?? NSDirectionalEdgeInsets(top: itemSpacing, leading: 0, bottom: 0, trailing: 0)
-                custom.topAnchor.constraint(equalTo: view.topAnchor, constant: insets.top).isActive = true
-                custom.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: insets.leading).isActive = true
-                custom.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -insets.trailing).isActive = true
-                custom.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -insets.bottom).isActive = true
+                content = custom
+                insets = separatorViewInsets ?? NSDirectionalEdgeInsets(top: itemSpacing, leading: 0, bottom: 0, trailing: 0)
             } else {
-                view.heightAnchor.constraint(equalToConstant: separatorHeight).isActive = true
+                content = UIView()
+                content.tag = Self.separatorLineTag
+                content.heightAnchor.constraint(equalToConstant: separatorHeight).isActive = true
+                insets = separatorViewInsets ?? .zero
             }
+            content.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(content)
+            content.topAnchor.constraint(equalTo: view.topAnchor, constant: insets.top).isActive = true
+            content.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: insets.leading).isActive = true
+            content.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -insets.trailing).isActive = true
+            content.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -insets.bottom).isActive = true
             container = view
         }
-        if separatorView == nil { container?.backgroundColor = separatorColor }
+        if separatorView == nil { container?.viewWithTag(Self.separatorLineTag)?.backgroundColor = separatorColor }
         container?.isHidden = !separatorOnLastItem && indexPath.item >= rows.count - 1
         if let container { cell.contentView.bringSubviewToFront(container) }
     }
