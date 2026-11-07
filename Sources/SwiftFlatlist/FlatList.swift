@@ -75,7 +75,8 @@ public final class FlatList: UICollectionView {
     ///     list.separatorView = { let line = MyDashedLine(); return line }
     public var separatorView: (() -> UIView)? { didSet { separatorChanged() } }
     /// Insets around the separator (`separatorView` or the plain `separatorColor` line).
-    /// Default: top inset of `itemSpacing` for both `separatorView` and the plain line.
+    /// Default: `separatorView` gets a top inset of `itemSpacing`. The plain line (vertical list) is centred in the
+    /// gap between two items; setting this places it at the bottom edge of the item with these insets instead.
     public var separatorViewInsets: NSDirectionalEdgeInsets? { didSet { separatorChanged() } }
     /// `false` (default): the last item has no separator. `true`: it gets one too.
     /// Applies to both the plain line and `separatorView`.
@@ -271,7 +272,14 @@ public final class FlatList: UICollectionView {
             cell.contentView.addSubview(view)
             view.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor).isActive = true
             view.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor).isActive = true
-            view.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor).isActive = true
+            // Default plain line in a vertical list: centred in the gap below the item (outside the cell's bounds).
+            let centredInGap = separatorView == nil && separatorViewInsets == nil && !horizontal
+            if centredInGap {
+                let offset = (itemSpacing - separatorHeight) / 2
+                view.topAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: offset).isActive = true
+            } else {
+                view.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor).isActive = true
+            }
             let content: UIView
             let insets: NSDirectionalEdgeInsets
             if let custom = separatorView?() {
@@ -281,7 +289,7 @@ public final class FlatList: UICollectionView {
                 content = UIView()
                 content.tag = Self.separatorLineTag
                 content.heightAnchor.constraint(equalToConstant: separatorHeight).isActive = true
-                insets = separatorViewInsets ?? NSDirectionalEdgeInsets(top: itemSpacing, leading: 0, bottom: 0, trailing: 0)
+                insets = separatorViewInsets ?? .zero
             }
             content.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(content)
