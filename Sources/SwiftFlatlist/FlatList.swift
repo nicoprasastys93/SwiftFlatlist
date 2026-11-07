@@ -254,7 +254,7 @@ public final class FlatList: UICollectionView {
     /// A container owned by the list (not by the cell) at the bottom of the cell's content, hidden on the last item.
     /// Existing items are reconfigured on every `setData`, so the old last item gets its separator back when more items arrive.
     private func applySeparator(to cell: UICollectionViewCell, at indexPath: IndexPath) {
-        var container = cell.contentView.viewWithTag(Self.separatorTag) as? SeparatorContainerView
+        var container = cell.viewWithTag(Self.separatorTag) as? SeparatorContainerView
         guard separatorColor != nil || separatorView != nil else {
             container?.isHidden = true
             return
@@ -269,16 +269,17 @@ public final class FlatList: UICollectionView {
             view.tag = Self.separatorTag
             view.isUserInteractionEnabled = false
             view.translatesAutoresizingMaskIntoConstraints = false
-            cell.contentView.addSubview(view)
-            view.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor).isActive = true
-            view.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor).isActive = true
+            cell.addSubview(view)
+            view.leadingAnchor.constraint(equalTo: cell.leadingAnchor).isActive = true
+            view.trailingAnchor.constraint(equalTo: cell.trailingAnchor).isActive = true
             // Default plain line in a vertical list: centred in the gap below the item (outside the cell's bounds).
             let centredInGap = separatorView == nil && separatorViewInsets == nil && !horizontal
             if centredInGap {
                 let offset = (itemSpacing - separatorHeight) / 2
-                view.topAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: offset).isActive = true
+                cell.clipsToBounds = false  // the line sits outside the cell; xib cells clip by default
+                view.topAnchor.constraint(equalTo: cell.bottomAnchor, constant: offset).isActive = true
             } else {
-                view.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor).isActive = true
+                view.bottomAnchor.constraint(equalTo: cell.bottomAnchor).isActive = true
             }
             let content: UIView
             let insets: NSDirectionalEdgeInsets
@@ -301,7 +302,7 @@ public final class FlatList: UICollectionView {
         }
         if separatorView == nil { container?.viewWithTag(Self.separatorLineTag)?.backgroundColor = separatorColor }
         container?.isHidden = !separatorOnLastItem && indexPath.item >= rows.count - 1
-        if let container { cell.contentView.bringSubviewToFront(container) }
+        if let container { cell.bringSubviewToFront(container) }
     }
 
     // MARK: - data
