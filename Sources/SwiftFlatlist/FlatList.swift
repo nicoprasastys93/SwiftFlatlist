@@ -76,7 +76,7 @@ public final class FlatList: UICollectionView {
     public var separatorView: (() -> UIView)? { didSet { separatorChanged() } }
     /// Insets around the separator (`separatorView` or the plain `separatorColor` line).
     /// Default: `separatorView` gets a top inset of `itemSpacing`. The plain line (vertical list) is centred in the
-    /// gap between two items; setting this places it at the bottom edge of the item with these insets instead.
+    /// gap between two items; the insets then shift it: `top` down, `bottom` up, `leading` / `trailing` shorten it.
     public var separatorViewInsets: NSDirectionalEdgeInsets? { didSet { separatorChanged() } }
     /// `false` (default): the last item has no separator. `true`: it gets one too.
     /// Applies to both the plain line and `separatorView`.
@@ -272,17 +272,11 @@ public final class FlatList: UICollectionView {
             cell.addSubview(view)
             view.leadingAnchor.constraint(equalTo: cell.leadingAnchor).isActive = true
             view.trailingAnchor.constraint(equalTo: cell.trailingAnchor).isActive = true
-            // Default plain line in a vertical list: centred in the gap below the item (outside the cell's bounds).
-            let centredInGap = separatorView == nil && separatorViewInsets == nil && !horizontal
-            if centredInGap {
-                let offset = (itemSpacing - separatorHeight) / 2
-                cell.clipsToBounds = false  // the line sits outside the cell; xib cells clip by default
-                view.topAnchor.constraint(equalTo: cell.bottomAnchor, constant: offset).isActive = true
-            } else {
-                view.bottomAnchor.constraint(equalTo: cell.bottomAnchor).isActive = true
-            }
+            // Plain line in a vertical list: centred in the gap below the item (outside the cell's bounds).
+            // `separatorViewInsets` then shifts it: top moves it down, bottom moves it up, leading/trailing shorten it.
+            let centredInGap = separatorView == nil && !horizontal
             let content: UIView
-            let insets: NSDirectionalEdgeInsets
+            var insets: NSDirectionalEdgeInsets
             if let custom = separatorView?() {
                 content = custom
                 insets = separatorViewInsets ?? NSDirectionalEdgeInsets(top: itemSpacing, leading: 0, bottom: 0, trailing: 0)
@@ -291,6 +285,15 @@ public final class FlatList: UICollectionView {
                 content.tag = Self.separatorLineTag
                 content.heightAnchor.constraint(equalToConstant: separatorHeight).isActive = true
                 insets = separatorViewInsets ?? .zero
+            }
+            if centredInGap {
+                let offset = (itemSpacing - separatorHeight) / 2 + insets.top - insets.bottom
+                cell.clipsToBounds = false  // the line sits outside the cell; xib cells clip by default
+                view.topAnchor.constraint(equalTo: cell.bottomAnchor, constant: offset).isActive = true
+                insets.top = 0
+                insets.bottom = 0
+            } else {
+                view.bottomAnchor.constraint(equalTo: cell.bottomAnchor).isActive = true
             }
             content.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(content)
